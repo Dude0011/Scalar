@@ -130,6 +130,59 @@ export class CatalogStore {
     this.ledgerHistory = [];
     this.saveCatalog();
     this.saveLedger();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('scalar_onboarding_completed', 'true');
+    }
+  }
+
+  isOnboardingCompleted() {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem('scalar_onboarding_completed') === 'true';
+  }
+
+  setOnboardingCompleted(completed = true) {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('scalar_onboarding_completed', completed ? 'true' : 'false');
+    }
+  }
+
+  populateMockData() {
+    this.items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    this.ledgerHistory = [
+      {
+        id: 'tx_seed_1',
+        timestamp: Date.now() - 1000 * 60 * 15,
+        name: 'Artisan Croissant',
+        quantity: 2,
+        unitPrice: 4.50,
+        totalPrice: 9.00,
+        currency: 'USD',
+        mode: 'AGENT',
+        status: 'CONFIRMED'
+      },
+      {
+        id: 'tx_seed_2',
+        timestamp: Date.now() - 1000 * 60 * 45,
+        name: 'Oat Milk Latte',
+        quantity: 3,
+        unitPrice: 5.75,
+        totalPrice: 17.25,
+        currency: 'USD',
+        mode: 'AGENT',
+        status: 'CONFIRMED'
+      }
+    ];
+    this.saveCatalog();
+    this.saveLedger();
+    this.setOnboardingCompleted(true);
+  }
+
+  clearAllData() {
+    this.items = [];
+    this.ledgerHistory = [];
+    this.saveCatalog();
+    this.saveLedger();
+    this.setOnboardingCompleted(false);
   }
 
   // RAG Fuzzy Synonym Matcher
@@ -208,22 +261,65 @@ export class CatalogStore {
     return item;
   }
 
-  createNewItem(name, price, currency = 'USD', stock = 20) {
+  editItem(itemId, updates) {
+    const item = this.items.find(i => i.id === itemId);
+    if (!item) return null;
+
+    if (updates.name && updates.name !== item.name) {
+      item.name = updates.name.trim();
+      item.canonicalName = item.name.toLowerCase();
+      if (!item.aliases.includes(item.canonicalName)) {
+        item.aliases.push(item.canonicalName);
+      }
+    }
+
+    if (updates.currentPrice !== undefined && updates.currentPrice !== item.currentPrice) {
+      const newP = parseFloat(updates.currentPrice) || item.currentPrice;
+      item.priceHistory.push({ price: newP, timestamp: Date.now(), note: 'Manual price adjustment' });
+      item.currentPrice = newP;
+    }
+
+    if (updates.currentStock !== undefined) {
+      item.currentStock = Math.max(0, parseInt(updates.currentStock) || 0);
+    }
+
+    if (updates.maxStock !== undefined) {
+      item.maxStock = Math.max(1, parseInt(updates.maxStock) || 50);
+    }
+
+    if (updates.minStockThreshold !== undefined) {
+      item.minStockThreshold = Math.max(0, parseInt(updates.minStockThreshold) || 5);
+    }
+
+    if (updates.supplier !== undefined) {
+      item.supplier = updates.supplier.trim();
+    }
+
+    this.saveCatalog();
+    return item;
+  }
+
+  deleteItem(itemId) {
+    this.items = this.items.filter(i => i.id !== itemId);
+    this.saveCatalog();
+  }
+
+  createNewItem(name, price, currency = 'USD', stock = 20, maxStock = 50, supplier = 'Direct Wholesaler') {
     const canonical = name.trim().toLowerCase();
     const newItem = {
       id: 'item_' + Date.now(),
       name: name.trim(),
       canonicalName: canonical,
       aliases: [canonical],
-      currentPrice: price,
+      currentPrice: parseFloat(price) || 0,
       currency: currency,
-      currentStock: stock,
-      maxStock: 50,
+      currentStock: parseInt(stock) || 20,
+      maxStock: parseInt(maxStock) || 50,
       minStockThreshold: 10,
       totalSold: 0,
       expiryDate: '2026-09-30',
-      supplier: 'Direct Wholesaler',
-      priceHistory: [{ price, timestamp: Date.now(), note: 'Initial creation' }]
+      supplier: supplier.trim() || 'Direct Wholesaler',
+      priceHistory: [{ price: parseFloat(price) || 0, timestamp: Date.now(), note: 'Initial creation' }]
     };
     this.items.push(newItem);
     this.saveCatalog();
@@ -232,3 +328,4 @@ export class CatalogStore {
 }
 
 export const catalogStore = new CatalogStore();
+

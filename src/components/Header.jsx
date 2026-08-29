@@ -28,6 +28,14 @@ export function Header({ activeTab, setActiveTab, mode, setMode, onResetCatalog 
           {/* Controls */}
           <div className="flex items-center gap-2">
             <button
+              onClick={onOpenOnboarding}
+              title="Open Setup / Onboarding Modal"
+              className="p-1.5 rounded-lg text-blue-400 hover:text-white bg-zinc-900 border border-blue-500/30 hover:border-blue-500/60 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+
+            <button
               onClick={() => setMode(mode === 'AGENT' ? 'BASELINE' : 'AGENT')}
               className={`text-[11px] font-mono px-2.5 py-1 rounded-lg border transition-colors ${
                 mode === 'AGENT'

@@ -6,6 +6,7 @@ import { TallyTab } from './components/TallyTab';
 import { InventoryTab } from './components/InventoryTab';
 import { TrajectoryTab } from './components/TrajectoryTab';
 import { HitLReviewCard } from './components/HitLReviewCard';
+import { OnboardingModal } from './components/OnboardingModal';
 import { catalogStore } from './services/catalogStore';
 import { transcribeAudioBlob, executeScalarAgent, executeBaseline } from './services/aiEngine';
 
@@ -17,19 +18,49 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [hitlReview, setHitlReview] = useState(null);
   const [lastRunResult, setLastRunResult] = useState(null);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   useEffect(() => {
     setLedger([...catalogStore.ledgerHistory]);
     setCatalogItems([...catalogStore.items]);
+
+    // Check if onboarding needs to be shown
+    if (!catalogStore.isOnboardingCompleted() || catalogStore.items.length === 0) {
+      setIsOnboardingOpen(true);
+    }
   }, []);
 
+  const handlePopulateMock = () => {
+    catalogStore.populateMockData();
+    setLedger([...catalogStore.ledgerHistory]);
+    setCatalogItems([...catalogStore.items]);
+    setIsOnboardingOpen(false);
+  };
+
+  const handleAddCustomItem = ({ name, price, stock, supplier }) => {
+    const newItem = catalogStore.createNewItem(name, price, 'USD', stock, 50, supplier);
+    setCatalogItems([...catalogStore.items]);
+    return newItem;
+  };
+
+  const handleEditItem = (id, updates) => {
+    catalogStore.editItem(id, updates);
+    setCatalogItems([...catalogStore.items]);
+  };
+
+  const handleDeleteItem = (id) => {
+    catalogStore.deleteItem(id);
+    setCatalogItems([...catalogStore.items]);
+  };
+
   const handleResetCatalog = () => {
-    if (confirm('Reset catalog memory and clear sales ledger?')) {
+    if (confirm('Reset store catalog memory and clear sales ledger?')) {
       catalogStore.resetStore();
       setLedger([]);
       setCatalogItems([...catalogStore.items]);
       setLastRunResult(null);
       setHitlReview(null);
+      setIsOnboardingOpen(true);
     }
   };
 
@@ -149,6 +180,7 @@ export default function App() {
         mode={mode}
         setMode={setMode}
         onResetCatalog={handleResetCatalog}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
       />
 
       {/* Main Screen Container */}
@@ -182,6 +214,12 @@ export default function App() {
         {activeTab === 'INVENTORY' && (
           <InventoryTab
             catalogItems={catalogItems}
+            onAddItem={handleAddCustomItem}
+            onEditItem={handleEditItem}
+            onDeleteItem={handleDeleteItem}
+            onPopulateMock={handlePopulateMock}
+            isProcessing={isProcessing}
+            onProcessTranscript={handleProcessTranscript}
           />
         )}
 
@@ -202,6 +240,18 @@ export default function App() {
       <HitLReviewCard
         reviewData={hitlReview}
         onResolveHitL={handleResolveHitL}
+      />
+
+      {/* Onboarding & Setup Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onPopulateMock={handlePopulateMock}
+        onAddCustomItem={handleAddCustomItem}
+        onFinish={() => {
+          catalogStore.setOnboardingCompleted(true);
+          setIsOnboardingOpen(false);
+        }}
+        itemCount={catalogItems.length}
       />
     </div>
   );
