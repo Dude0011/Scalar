@@ -1,29 +1,15 @@
-// AI Engine Service — Vercel Serverless Integration
+// AI Engine Service — Vercel Serverless Integration (No Client-Side API Keys)
 
-export function getStoredApiKeys() {
-  return {
-    fireworksKey: localStorage.getItem('scalar_fireworks_key') || '',
-    groqKey: localStorage.getItem('scalar_groq_key') || ''
-  };
-}
-
-export function saveApiKeys({ fireworksKey, groqKey }) {
-  if (fireworksKey !== undefined) localStorage.setItem('scalar_fireworks_key', fireworksKey);
-  if (groqKey !== undefined) localStorage.setItem('scalar_groq_key', groqKey);
-}
-
-// Audio STT Handler via Vercel Serverless API Endpoint
-export async function transcribeAudioBlob(audioBlob, clientKey = '') {
+// Audio STT Handler — calls Vercel /api/stt which uses server-side GROQ_API_KEY
+export async function transcribeAudioBlob(audioBlob) {
   try {
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.wav');
     formData.append('model', 'whisper-large-v3-turbo');
 
-    // Call Vercel Serverless Function /api/stt
     const response = await fetch('/api/stt', {
       method: 'POST',
-      body: formData,
-      headers: clientKey ? { 'x-groq-key': clientKey } : {}
+      body: formData
     });
 
     if (response.ok) {
@@ -31,15 +17,14 @@ export async function transcribeAudioBlob(audioBlob, clientKey = '') {
       if (data.text) return data.text;
     }
   } catch (err) {
-    console.warn('Vercel STT serverless endpoint fallback:', err);
+    console.warn('Vercel STT serverless endpoint error:', err);
   }
 
-  // Fallback preset text
-  return 'Sold two artisan croissants for nine dollars';
+  return null;
 }
 
-// Memoryless Baseline Execution
-export async function executeBaseline(transcript, apiKeys = {}) {
+// Memoryless Baseline Execution (local, no API needed)
+export async function executeBaseline(transcript) {
   const startTime = Date.now();
   const words = transcript.toLowerCase();
 
@@ -73,15 +58,15 @@ export async function executeBaseline(transcript, apiKeys = {}) {
   };
 }
 
-// Scalar Agent Execution (Vercel Serverless backend + RAG Memory + HITL Guardrails)
-export async function executeScalarAgent(transcript, catalogStore, apiKeys = {}) {
+// Scalar Agent Execution — calls Vercel /api/agent which uses server-side FIREWORKS_API_KEY
+export async function executeScalarAgent(transcript, catalogStore) {
   const startTime = Date.now();
   const trajectory = [];
 
   trajectory.push({
     step: 'stt_transcribe',
     action: 'Audio Transcribed / Text Input Received',
-    tool: 'Groq Whisper STT (Vercel API)',
+    tool: 'Groq Whisper STT (Vercel Serverless)',
     output: `Transcript: "${transcript}"`
   });
 
@@ -106,7 +91,7 @@ export async function executeScalarAgent(transcript, catalogStore, apiKeys = {})
     console.warn('Serverless agent fallback:', err);
   }
 
-  // Local agent parsing fallback if serverless endpoint is offline
+  // Local agent parsing fallback if serverless endpoint is offline (e.g. localhost dev)
   if (!parsed) {
     const words = transcript.toLowerCase();
     let qty = 1;
@@ -162,7 +147,6 @@ export async function executeScalarAgent(transcript, catalogStore, apiKeys = {})
       output: `Matched Canonical Item: "${catalogItem.name}" (Score: ${ragMatch.matchScore}, Match: ${ragMatch.matchType})`
     });
 
-    // Check Price Drift (>15% variance)
     if (priceVariance > 0.15) {
       decision = {
         status: 'PRICE_DRIFT_FLAGGED',
@@ -199,7 +183,6 @@ export async function executeScalarAgent(transcript, catalogStore, apiKeys = {})
       });
     }
   } else {
-    // New item created
     decision = {
       status: 'NEW_ITEM_FLAGGED',
       finalItemName: parsed.rawItemName,

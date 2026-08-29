@@ -6,30 +6,22 @@ import { TallyTab } from './components/TallyTab';
 import { InventoryTab } from './components/InventoryTab';
 import { TrajectoryTab } from './components/TrajectoryTab';
 import { HitLReviewCard } from './components/HitLReviewCard';
-import { ApiSettingsModal } from './components/ApiSettingsModal';
 import { catalogStore } from './services/catalogStore';
-import { transcribeAudioBlob, executeScalarAgent, executeBaseline, getStoredApiKeys, saveApiKeys } from './services/aiEngine';
+import { transcribeAudioBlob, executeScalarAgent, executeBaseline } from './services/aiEngine';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('LOG'); // 'LOG' | 'TALLY' | 'INVENTORY' | 'TRAJECTORY'
-  const [mode, setMode] = useState('AGENT'); // 'AGENT' | 'BASELINE'
+  const [activeTab, setActiveTab] = useState('LOG');
+  const [mode, setMode] = useState('AGENT');
   const [ledger, setLedger] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hitlReview, setHitlReview] = useState(null);
   const [lastRunResult, setLastRunResult] = useState(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [apiKeys, setApiKeys] = useState(getStoredApiKeys());
 
   useEffect(() => {
     setLedger([...catalogStore.ledgerHistory]);
     setCatalogItems([...catalogStore.items]);
   }, []);
-
-  const handleSaveKeys = (keys) => {
-    setApiKeys(keys);
-    saveApiKeys(keys);
-  };
 
   const handleResetCatalog = () => {
     if (confirm('Reset catalog memory and clear sales ledger?')) {
@@ -55,7 +47,7 @@ export default function App() {
       let transcript = textInput;
 
       if (audioBlob && !transcript) {
-        transcript = await transcribeAudioBlob(audioBlob, apiKeys.groqKey || apiKeys.fireworksKey);
+        transcript = await transcribeAudioBlob(audioBlob);
       }
 
       if (!transcript) {
@@ -65,7 +57,7 @@ export default function App() {
       }
 
       if (mode === 'BASELINE') {
-        const result = await executeBaseline(transcript, apiKeys);
+        const result = await executeBaseline(transcript);
         setLastRunResult(result);
 
         catalogStore.addLedgerEntry({
@@ -81,7 +73,7 @@ export default function App() {
         setLedger([...catalogStore.ledgerHistory]);
         setCatalogItems([...catalogStore.items]);
       } else {
-        const result = await executeScalarAgent(transcript, catalogStore, apiKeys);
+        const result = await executeScalarAgent(transcript, catalogStore);
         setLastRunResult(result);
 
         if (
@@ -147,10 +139,8 @@ export default function App() {
     setHitlReview(null);
   };
 
-  const hasApiKeys = Boolean(apiKeys.fireworksKey || apiKeys.groqKey);
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans">
       
       {/* Navigation Header */}
       <Header
@@ -158,9 +148,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         mode={mode}
         setMode={setMode}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onResetCatalog={handleResetCatalog}
-        hasApiKeys={hasApiKeys}
       />
 
       {/* Main Screen Container */}
@@ -206,7 +194,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="py-3 text-center text-[11px] text-slate-500 border-t border-slate-900">
+      <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900">
         Scalar • Voice-First Stateful Commerce Engine • micro1 Hackathon
       </footer>
 
@@ -214,14 +202,6 @@ export default function App() {
       <HitLReviewCard
         reviewData={hitlReview}
         onResolveHitL={handleResolveHitL}
-      />
-
-      {/* API Settings Modal */}
-      <ApiSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        apiKeys={apiKeys}
-        onSaveKeys={handleSaveKeys}
       />
     </div>
   );

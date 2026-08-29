@@ -1,37 +1,70 @@
-// Vercel Serverless Function — Audio STT Endpoint
+// Vercel Serverless Function — Audio STT via Groq Whisper API
+import { IncomingForm } from 'formidable';
+import fs from 'fs';
+
+export const config = {
+  api: { bodyParser: false }
+};
+
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const groqKey = process.env.GROQ_API_KEY || process.env.FIREWORKS_API_KEY || req.headers['x-groq-key'];
+  const groqKey = process.env.GROQ_API_KEY;
 
   if (!groqKey) {
     return res.status(200).json({
       fallback: true,
-      text: 'Sold two artisan croissants for nine dollars',
-      message: 'Serverless env key missing. Used fallback transcript.'
+      text: '',
+      message: 'GROQ_API_KEY not set in Vercel environment variables.'
     });
   }
 
   try {
-    // Return mock fallback or proxy to Groq endpoint
-    return res.status(200).json({
-      success: true,
-      text: 'Sold two artisan croissants for nine dollars'
+    // Parse multipart form data
+    const form = new IncomingForm({ keepExtensions: true });
+    const { files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve({ fields, files });
+      });
     });
+
+    const audioFile = files.file?.[0] || files.file;
+    if (!audioFile) {
+      return res.status(400).json({ error: 'No audio file received' });
+    }
+
+    // Proxy audio to Groq Whisper API
+    const fileBuffer = fs.readFileSync(audioFile.filepath || audioFile.path);
+    const blob = new Blob([fileBuffer], { type: audioFile.mimetype || 'audio/wav' });
+
+    const formData = new FormData();
+    formData.append('file', blob, audioFile.originalFilename || 'audio.wav');
+    formData.append('model', 'whisper-large-v3-turbo');
+
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${groqKey}` },
+      body: formData
+    });
+
+    if (!groqResponse.ok) {
+      const errorBody = await groqResponse.text();
+      console.error('Groq STT error:', errorBody);
+      return res.status(200).json({ text: '', error: 'Groq STT API error', details: errorBody });
+    }
+
+    const data = await groqResponse.json();
+    return res.status(200).json({ success: true, text: data.text || '' });
+
   } catch (err) {
+    console.error('STT handler error:', err);
     return res.status(500).json({ error: err.message });
   }
 }

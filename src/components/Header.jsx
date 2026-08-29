@@ -1,7 +1,7 @@
 import React from 'react';
-import { Mic, BarChart2, Package, Terminal, Settings, RotateCcw } from 'lucide-react';
+import { Mic, BarChart2, Package, Terminal, RotateCcw } from 'lucide-react';
 
-export function Header({ activeTab, setActiveTab, mode, setMode, onOpenSettings, onResetCatalog, hasApiKeys }) {
+export function Header({ activeTab, setActiveTab, mode, setMode, onResetCatalog }) {
   return (
     <header className="sticky top-0 z-40 bg-black border-b border-zinc-800 px-4 py-3 sm:px-6">
       <div className="max-w-xl mx-auto flex flex-col gap-3">
@@ -25,7 +25,7 @@ export function Header({ activeTab, setActiveTab, mode, setMode, onOpenSettings,
             </div>
           </div>
 
-          {/* Controls & Mode Switcher */}
+          {/* Controls */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMode(mode === 'AGENT' ? 'BASELINE' : 'AGENT')}
@@ -45,16 +45,6 @@ export function Header({ activeTab, setActiveTab, mode, setMode, onOpenSettings,
               className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800"
             >
               <RotateCcw className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onOpenSettings}
-              className={`p-1.5 rounded-lg border text-xs font-medium ${
-                hasApiKeys ? 'bg-zinc-900 border-emerald-500/30 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-              }`}
-              title="Vercel serverless keys handles API backend. Optional custom key config."
-            >
-              <Settings className="w-4 h-4" />
             </button>
           </div>
         </div>
