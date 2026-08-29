@@ -83,9 +83,13 @@ export async function executeScalarAgent(transcript, catalogStore) {
       })
     });
 
-    if (res.ok) {
+    // Only parse if response is actually JSON (avoid Vite SPA HTML 200 in local dev)
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      if (data.parsed) parsed = data.parsed;
+      if (data.parsed && data.parsed.rawItemName) {
+        parsed = data.parsed;
+      }
     }
   } catch (err) {
     console.warn('Serverless agent fallback:', err);
@@ -107,6 +111,7 @@ export async function executeScalarAgent(transcript, catalogStore) {
       price = parseFloat(priceMatch[1].replace(/[^0-9.]/g, '')) || 5.0;
     }
 
+    // Use the raw transcript as the item name, with known-item keyword matching
     let itemName = transcript;
     if (words.includes('croissant')) itemName = 'Artisan Croissant';
     else if (words.includes('latte') || words.includes('coffee')) itemName = 'Oat Milk Latte';
@@ -121,6 +126,11 @@ export async function executeScalarAgent(transcript, catalogStore) {
       totalAmount: price,
       currency: 'USD'
     };
+  }
+
+  // Final safety: rawItemName must never be empty/undefined
+  if (!parsed.rawItemName) {
+    parsed.rawItemName = transcript;
   }
 
   trajectory.push({
