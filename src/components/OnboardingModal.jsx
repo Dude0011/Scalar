@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, Package, Plus, CheckCircle, Store, Zap } from 'lucide-react';
+import { Sparkles, Package, Plus, CheckCircle, Store, Zap, X } from 'lucide-react';
 
-export function OnboardingModal({ isOpen, onPopulateMock, onAddCustomItem, onFinish, itemCount }) {
+export function OnboardingModal({ isOpen, onClose, onPopulateMock, onAddCustomItem, onFinish, itemCount }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('30');
@@ -27,16 +27,25 @@ export function OnboardingModal({ isOpen, onPopulateMock, onAddCustomItem, onFin
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-white flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-white flex flex-col gap-5 max-h-[90vh] overflow-y-auto relative">
         
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 rounded-lg text-zinc-400 hover:text-white bg-black border border-zinc-800"
+          title="Close modal"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Banner Header */}
-        <div className="text-center">
+        <div className="text-center pr-6">
           <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center mx-auto mb-3">
             <Store className="w-6 h-6" />
           </div>
           <h2 className="text-lg font-black tracking-tight text-white">Welcome to Scalar</h2>
           <p className="text-xs text-zinc-400 mt-1 font-medium">
-            Scalar keeps your business numbers straight. Set up your store inventory below to get started.
+            Scalar keeps your business numbers straight. Set up your store inventory below or load demo data.
           </p>
         </div>
 
@@ -136,11 +145,10 @@ export function OnboardingModal({ isOpen, onPopulateMock, onAddCustomItem, onFin
         {/* Action / Finish Button */}
         <button
           onClick={onFinish}
-          disabled={itemCount === 0 && addedItems.length === 0}
-          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-lg"
+          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-lg"
         >
           <CheckCircle className="w-4 h-4" />
-          <span>Launch Store ({itemCount > 0 ? `${itemCount} Items` : 'Ready'})</span>
+          <span>Continue to App {itemCount > 0 ? `(${itemCount} Items)` : ''}</span>
         </button>
       </div>
     </div>

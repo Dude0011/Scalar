@@ -24,8 +24,8 @@ export default function App() {
     setLedger([...catalogStore.ledgerHistory]);
     setCatalogItems([...catalogStore.items]);
 
-    // Check if onboarding needs to be shown
-    if (!catalogStore.isOnboardingCompleted() || catalogStore.items.length === 0) {
+    // Only open onboarding automatically if catalog has zero items
+    if (catalogStore.items.length === 0) {
       setIsOnboardingOpen(true);
     }
   }, []);
@@ -245,6 +245,7 @@ export default function App() {
       {/* Onboarding & Setup Modal */}
       <OnboardingModal
         isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
         onPopulateMock={handlePopulateMock}
         onAddCustomItem={handleAddCustomItem}
         onFinish={() => {
