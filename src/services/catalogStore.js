@@ -346,6 +346,30 @@ export class CatalogStore {
     this.saveCatalog();
     return newItem;
   }
+
+  updateLedgerEntry(entryId, updates) {
+    const entry = this.ledgerHistory.find(l => l.id === entryId);
+    if (!entry) return null;
+
+    if (updates.name) entry.name = updates.name.trim();
+    if (updates.quantity !== undefined) entry.quantity = parseInt(updates.quantity) || 1;
+    if (updates.unitPrice !== undefined) entry.unitPrice = parseFloat(updates.unitPrice) || 0;
+    
+    entry.totalPrice = entry.quantity * entry.unitPrice;
+    entry.confidence = 100;
+    entry.confidenceLabel = 'AUDITED';
+    entry.status = 'CONFIRMED';
+
+    // Also update catalog item current price if name matches
+    const match = this.items.find(i => i.name.toLowerCase() === entry.name.toLowerCase());
+    if (match && updates.unitPrice !== undefined && updates.unitPrice > 0) {
+      match.currentPrice = updates.unitPrice;
+      this.saveCatalog();
+    }
+
+    this.saveLedger();
+    return entry;
+  }
 }
 
 export const catalogStore = new CatalogStore();

@@ -150,6 +150,8 @@ export async function executeScalarAgent(transcript, catalogStore) {
     if (priceVariance > 0.35) {
       decision = {
         status: 'PRICE_DRIFT_FLAGGED',
+        confidence: 68,
+        confidenceLabel: 'MEDIUM',
         finalItemName: catalogItem.name,
         quantity: parsed.quantity || 1,
         unitPrice: claimedPrice,
@@ -163,11 +165,13 @@ export async function executeScalarAgent(transcript, catalogStore) {
         step: 'verify_price_drift',
         action: 'Price Guardrail Evaluation',
         tool: 'VarianceChecker',
-        output: `FLAGGED: Claimed price $${claimedPrice} differs by ${(priceVariance * 100).toFixed(1)}% from history ($${historicalPrice}). Exceeds 35% safety threshold. Requiring Human-in-the-Loop review.`
+        output: `FLAGGED (68% Confidence): Claimed price $${claimedPrice} differs by ${(priceVariance * 100).toFixed(1)}% from history ($${historicalPrice}). Exceeds 35% safety threshold.`
       });
     } else {
       decision = {
         status: 'CONFIRMED',
+        confidence: 98,
+        confidenceLabel: 'HIGH',
         finalItemName: catalogItem.name,
         quantity: parsed.quantity || 1,
         unitPrice: claimedPrice || historicalPrice,
@@ -179,15 +183,16 @@ export async function executeScalarAgent(transcript, catalogStore) {
         step: 'verify_price_drift',
         action: 'Price Guardrail Evaluation',
         tool: 'VarianceChecker',
-        output: `CONFIRMED: Price $${claimedPrice || historicalPrice} aligns with historical average ($${historicalPrice}). Auto-audited and committed.`
+        output: `CONFIRMED (98% Confidence): Price $${claimedPrice || historicalPrice} aligns with historical average ($${historicalPrice}). Auto-audited and committed.`
       });
     }
   } else {
-    // If unit price is valid (>0), auto-commit as a new item. If 0 or missing, flag for review.
     const isPriceValid = parsed.claimedUnitPrice > 0;
     
     decision = {
       status: isPriceValid ? 'CONFIRMED' : 'NEW_ITEM_FLAGGED',
+      confidence: isPriceValid ? 82 : 45,
+      confidenceLabel: isPriceValid ? 'MEDIUM' : 'LOW',
       finalItemName: parsed.rawItemName,
       quantity: parsed.quantity || 1,
       unitPrice: parsed.claimedUnitPrice || 5.0,
@@ -199,7 +204,7 @@ export async function executeScalarAgent(transcript, catalogStore) {
       step: 'rag_catalog_search',
       action: 'Stateful Item Memory Lookup',
       tool: 'CatalogStore RAG Matcher',
-      output: `No existing match for "${parsed.rawItemName}". ${isPriceValid ? 'Auto-creating new item in catalog.' : 'Flagging for price assignment.'}`
+      output: `No existing match for "${parsed.rawItemName}". ${isPriceValid ? 'Auto-creating new item in catalog (82% Confidence).' : 'Low confidence (45%). Audit recommended.'}`
     });
   }
 

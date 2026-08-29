@@ -107,15 +107,8 @@ export default function App() {
         const result = await executeScalarAgent(transcript, catalogStore);
         setLastRunResult(result);
 
-        if (
-          result.decision.status === 'PRICE_DRIFT_FLAGGED' ||
-          result.decision.status === 'NEW_ITEM_FLAGGED' ||
-          result.decision.status === 'AMBIGUOUS_FLAGGED'
-        ) {
-          setHitlReview({ transcript, decision: result.decision });
-        } else {
-          commitAgentEntry(result.decision, 'AUTO_CONFIRMED');
-        }
+        // ALWAYS commit spoken entries immediately to ledger regardless of confidence!
+        commitAgentEntry(result.decision, 'AUTO_COMMITTED');
       }
     } catch (err) {
       alert(`Error processing transaction: ${err.message}`);
@@ -124,8 +117,14 @@ export default function App() {
     }
   };
 
+  const handleUpdateEntry = (entryId, updates) => {
+    catalogStore.updateLedgerEntry(entryId, updates);
+    setLedger([...catalogStore.ledgerHistory]);
+    setCatalogItems([...catalogStore.items]);
+  };
+
   const commitAgentEntry = (decisionDetails, commitNote = 'AUTO') => {
-    const isNew = decisionDetails.status === 'NEW_ITEM_FLAGGED';
+    const isNew = decisionDetails.status === 'NEW_ITEM_FLAGGED' && decisionDetails.unitPrice > 0;
 
     if (isNew) {
       catalogStore.createNewItem(decisionDetails.finalItemName, decisionDetails.unitPrice, 'USD');
@@ -146,6 +145,8 @@ export default function App() {
       currency: 'USD',
       mode: 'AGENT',
       status: decisionDetails.status,
+      confidence: decisionDetails.confidence || (decisionDetails.status === 'CONFIRMED' ? 98 : 65),
+      confidenceLabel: decisionDetails.confidenceLabel || (decisionDetails.status === 'CONFIRMED' ? 'HIGH' : 'MEDIUM'),
       isConsolidated: !isNew && Boolean(decisionDetails.catalogItem)
     });
 
@@ -162,7 +163,9 @@ export default function App() {
           unitPrice: item.unitPrice,
           currency: 'USD',
           catalogItem: item.catalogItem,
-          status: item.status
+          status: 'CONFIRMED',
+          confidence: 100,
+          confidenceLabel: 'AUDITED'
         },
         'USER_HITL_APPROVED'
       );
@@ -198,6 +201,7 @@ export default function App() {
             <RecentEntriesFeed
               ledger={ledger}
               onDeleteEntry={handleDeleteEntry}
+              onUpdateEntry={handleUpdateEntry}
             />
           </>
         )}
