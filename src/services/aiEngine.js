@@ -147,11 +147,11 @@ export async function executeScalarAgent(transcript, catalogStore) {
       output: `Matched Canonical Item: "${catalogItem.name}" (Score: ${ragMatch.matchScore}, Match: ${ragMatch.matchType})`
     });
 
-    if (priceVariance > 0.15) {
+    if (priceVariance > 0.35) {
       decision = {
         status: 'PRICE_DRIFT_FLAGGED',
         finalItemName: catalogItem.name,
-        quantity: parsed.quantity,
+        quantity: parsed.quantity || 1,
         unitPrice: claimedPrice,
         historicalPrice: historicalPrice,
         variancePercent: (priceVariance * 100).toFixed(1),
@@ -163,13 +163,13 @@ export async function executeScalarAgent(transcript, catalogStore) {
         step: 'verify_price_drift',
         action: 'Price Guardrail Evaluation',
         tool: 'VarianceChecker',
-        output: `FLAGGED: Claimed price $${claimedPrice} differs by ${(priceVariance * 100).toFixed(1)}% from history ($${historicalPrice}). Requiring Human-in-the-Loop approval.`
+        output: `FLAGGED: Claimed price $${claimedPrice} differs by ${(priceVariance * 100).toFixed(1)}% from history ($${historicalPrice}). Exceeds 35% safety threshold. Requiring Human-in-the-Loop review.`
       });
     } else {
       decision = {
         status: 'CONFIRMED',
         finalItemName: catalogItem.name,
-        quantity: parsed.quantity,
+        quantity: parsed.quantity || 1,
         unitPrice: claimedPrice || historicalPrice,
         currency: 'USD',
         catalogItem: catalogItem
@@ -179,15 +179,18 @@ export async function executeScalarAgent(transcript, catalogStore) {
         step: 'verify_price_drift',
         action: 'Price Guardrail Evaluation',
         tool: 'VarianceChecker',
-        output: `CONFIRMED: Price $${claimedPrice} aligns with historical average ($${historicalPrice}).`
+        output: `CONFIRMED: Price $${claimedPrice || historicalPrice} aligns with historical average ($${historicalPrice}). Auto-audited and committed.`
       });
     }
   } else {
+    // If unit price is valid (>0), auto-commit as a new item. If 0 or missing, flag for review.
+    const isPriceValid = parsed.claimedUnitPrice > 0;
+    
     decision = {
-      status: 'NEW_ITEM_FLAGGED',
+      status: isPriceValid ? 'CONFIRMED' : 'NEW_ITEM_FLAGGED',
       finalItemName: parsed.rawItemName,
-      quantity: parsed.quantity,
-      unitPrice: parsed.claimedUnitPrice,
+      quantity: parsed.quantity || 1,
+      unitPrice: parsed.claimedUnitPrice || 5.0,
       currency: 'USD',
       catalogItem: null
     };
@@ -196,7 +199,7 @@ export async function executeScalarAgent(transcript, catalogStore) {
       step: 'rag_catalog_search',
       action: 'Stateful Item Memory Lookup',
       tool: 'CatalogStore RAG Matcher',
-      output: `No existing catalog match for "${parsed.rawItemName}". Flagging for new catalog entry creation.`
+      output: `No existing match for "${parsed.rawItemName}". ${isPriceValid ? 'Auto-creating new item in catalog.' : 'Flagging for price assignment.'}`
     });
   }
 

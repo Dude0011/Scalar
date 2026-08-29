@@ -24,8 +24,8 @@ export default function App() {
     setLedger([...catalogStore.ledgerHistory]);
     setCatalogItems([...catalogStore.items]);
 
-    // Only open onboarding automatically if catalog has zero items
-    if (catalogStore.items.length === 0) {
+    // Open onboarding automatically on first visit or reset
+    if (!catalogStore.isOnboardingCompleted() || catalogStore.items.length === 0) {
       setIsOnboardingOpen(true);
     }
   }, []);
