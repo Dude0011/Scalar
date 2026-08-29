@@ -1,7 +1,7 @@
 import React from 'react';
-import { Mic, BarChart2, Package, Terminal, RotateCcw } from 'lucide-react';
+import { Mic, BarChart2, Package, Terminal, RotateCcw, Sparkles } from 'lucide-react';
 
-export function Header({ activeTab, setActiveTab, mode, setMode, onResetCatalog }) {
+export function Header({ activeTab, setActiveTab, mode, setMode, onResetCatalog, onOpenOnboarding }) {
   return (
     <header className="sticky top-0 z-40 bg-black border-b border-zinc-800 px-4 py-3 sm:px-6">
       <div className="max-w-xl mx-auto flex flex-col gap-3">
