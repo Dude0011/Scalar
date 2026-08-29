@@ -89,7 +89,24 @@ export class CatalogStore {
   loadCatalog() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_ITEMS;
+      const items = stored ? JSON.parse(stored) : DEFAULT_ITEMS;
+      
+      // Safety normalization to prevent blank page runtime errors on malformed objects
+      return items.map((item, idx) => ({
+        id: item.id || `item_safe_${idx}`,
+        name: item.name || 'Unnamed Product',
+        canonicalName: item.canonicalName || (item.name ? item.name.toLowerCase() : 'unnamed'),
+        aliases: Array.isArray(item.aliases) ? item.aliases : [item.name ? item.name.toLowerCase() : 'unnamed'],
+        currentPrice: typeof item.currentPrice === 'number' ? item.currentPrice : parseFloat(item.currentPrice) || 0,
+        currency: item.currency || 'USD',
+        currentStock: typeof item.currentStock === 'number' ? item.currentStock : parseInt(item.currentStock) || 20,
+        maxStock: typeof item.maxStock === 'number' ? item.maxStock : parseInt(item.maxStock) || 50,
+        minStockThreshold: typeof item.minStockThreshold === 'number' ? item.minStockThreshold : parseInt(item.minStockThreshold) || 10,
+        totalSold: item.totalSold || 0,
+        expiryDate: item.expiryDate || '2026-10-15',
+        supplier: item.supplier || 'Direct Wholesaler',
+        priceHistory: Array.isArray(item.priceHistory) && item.priceHistory.length > 0 ? item.priceHistory : [{ price: item.currentPrice || 0, timestamp: Date.now(), note: 'Initial price' }]
+      }));
     } catch (e) {
       return DEFAULT_ITEMS;
     }
@@ -295,6 +312,10 @@ export class CatalogStore {
       item.supplier = updates.supplier.trim();
     }
 
+    if (updates.expiryDate !== undefined) {
+      item.expiryDate = updates.expiryDate.trim();
+    }
+
     this.saveCatalog();
     return item;
   }
@@ -304,7 +325,7 @@ export class CatalogStore {
     this.saveCatalog();
   }
 
-  createNewItem(name, price, currency = 'USD', stock = 20, maxStock = 50, supplier = 'Direct Wholesaler') {
+  createNewItem(name, price, currency = 'USD', stock = 20, maxStock = 50, supplier = 'Direct Wholesaler', expiryDate = '2026-10-15') {
     const canonical = name.trim().toLowerCase();
     const newItem = {
       id: 'item_' + Date.now(),
@@ -317,7 +338,7 @@ export class CatalogStore {
       maxStock: parseInt(maxStock) || 50,
       minStockThreshold: 10,
       totalSold: 0,
-      expiryDate: '2026-09-30',
+      expiryDate: expiryDate.trim() || '2026-10-15',
       supplier: supplier.trim() || 'Direct Wholesaler',
       priceHistory: [{ price: parseFloat(price) || 0, timestamp: Date.now(), note: 'Initial creation' }]
     };

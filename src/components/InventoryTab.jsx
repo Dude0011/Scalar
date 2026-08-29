@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Package, Plus, Mic, Square, Edit3, Trash2, Check, X, AlertTriangle, PhoneCall, Calendar, RefreshCw, Zap, Sparkles } from 'lucide-react';
 
-export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem, onPopulateMock, isProcessing, onProcessTranscript }) {
+export function InventoryTab({ catalogItems = [], onAddItem, onEditItem, onDeleteItem, onPopulateMock, isProcessing, onProcessTranscript }) {
   // New Item State
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('20');
   const [supplier, setSupplier] = useState('');
+  const [expiryDate, setExpiryDate] = useState('2026-10-15');
   const [addMode, setAddMode] = useState('FORM'); // 'FORM' | 'VOICE'
 
   // Voice recording state for stock add
@@ -20,6 +21,7 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
   const [editPrice, setEditPrice] = useState('');
   const [editStock, setEditStock] = useState('');
   const [editSupplier, setEditSupplier] = useState('');
+  const [editExpiryDate, setEditExpiryDate] = useState('');
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
@@ -28,11 +30,13 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
       name: name.trim(),
       price: parseFloat(price) || 0,
       stock: parseInt(stock) || 20,
-      supplier: supplier.trim() || 'Direct Wholesaler'
+      supplier: supplier.trim() || 'Direct Wholesaler',
+      expiryDate: expiryDate.trim() || '2026-10-15'
     });
     setName('');
     setPrice('');
     setSupplier('');
+    setExpiryDate('2026-10-15');
   };
 
   const startVoiceStockAdd = async () => {
@@ -67,19 +71,21 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
 
   const openEditModal = (item) => {
     setEditingItem(item);
-    setEditName(item.name);
-    setEditPrice(item.currentPrice.toString());
-    setEditStock(item.currentStock.toString());
+    setEditName(item.name || '');
+    setEditPrice((item.currentPrice ?? 0).toString());
+    setEditStock((item.currentStock ?? 20).toString());
     setEditSupplier(item.supplier || '');
+    setEditExpiryDate(item.expiryDate || '2026-10-15');
   };
 
   const saveEdit = () => {
     if (!editingItem) return;
     onEditItem(editingItem.id, {
       name: editName,
-      currentPrice: parseFloat(editPrice),
-      currentStock: parseInt(editStock),
-      supplier: editSupplier
+      currentPrice: parseFloat(editPrice) || 0,
+      currentStock: parseInt(editStock) || 0,
+      supplier: editSupplier,
+      expiryDate: editExpiryDate
     });
     setEditingItem(null);
   };
@@ -94,7 +100,7 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
             Inventory & Stock Manager
           </h3>
           <p className="text-[11px] text-zinc-400 mt-0.5">
-            Add products via voice/text, edit prices, or adjust stock levels
+            Add products via voice/text, edit prices, expiry dates, or stock levels
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -171,7 +177,14 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
                 placeholder="Supplier Name (Optional)"
-                className="col-span-2 bg-black border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                className="bg-black border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              />
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                placeholder="Expiry Date"
+                className="bg-black border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -213,8 +226,12 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
           </div>
         ) : (
           catalogItems.map((item) => {
-            const isLowStock = item.currentStock <= item.minStockThreshold;
-            const percentRemaining = Math.min(100, Math.max(0, (item.currentStock / item.maxStock) * 100));
+            const safeStock = typeof item.currentStock === 'number' ? item.currentStock : 20;
+            const safeMaxStock = typeof item.maxStock === 'number' ? item.maxStock : 50;
+            const safeThreshold = typeof item.minStockThreshold === 'number' ? item.minStockThreshold : 10;
+            const safePrice = typeof item.currentPrice === 'number' ? item.currentPrice : 0;
+            const isLowStock = safeStock <= safeThreshold;
+            const percentRemaining = Math.min(100, Math.max(0, (safeStock / safeMaxStock) * 100));
 
             return (
               <div
@@ -226,7 +243,7 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-white">{item.name}</h4>
+                      <h4 className="text-xs font-bold text-white">{item.name || 'Unnamed Item'}</h4>
                       {isLowStock && (
                         <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
@@ -266,15 +283,15 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
                   <div className="flex items-center gap-2">
                     <span className="text-zinc-400">Stock:</span>
                     <button
-                      onClick={() => onEditItem(item.id, { currentStock: Math.max(0, item.currentStock - 1) })}
+                      onClick={() => onEditItem(item.id, { currentStock: Math.max(0, safeStock - 1) })}
                       className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-bold"
                       title="Quick Subtract Stock"
                     >
                       -1
                     </button>
-                    <span className="font-black text-white px-1">{item.currentStock} / {item.maxStock}</span>
+                    <span className="font-black text-white px-1">{safeStock} / {safeMaxStock}</span>
                     <button
-                      onClick={() => onEditItem(item.id, { currentStock: item.currentStock + 5 })}
+                      onClick={() => onEditItem(item.id, { currentStock: safeStock + 5 })}
                       className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-emerald-400 font-bold"
                       title="Quick Add +5 Stock"
                     >
@@ -284,7 +301,7 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
 
                   <div className="text-right">
                     <span className="text-emerald-400 font-bold text-xs">
-                      ${item.currentPrice?.toFixed(2)} / unit
+                      ${safePrice.toFixed(2)} / unit
                     </span>
                   </div>
                 </div>
@@ -304,12 +321,12 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
                 <div className="flex items-center justify-between text-[11px] pt-2 border-t border-zinc-800/80">
                   <span className="text-zinc-400 flex items-center gap-1 font-mono text-[10px]">
                     <Calendar className="w-3 h-3 text-zinc-500" />
-                    Exp: {item.expiryDate || 'N/A'}
+                    Exp: <strong className="text-zinc-300 font-medium">{item.expiryDate || '2026-10-15'}</strong>
                   </span>
 
                   {isLowStock && (
                     <button
-                      onClick={() => alert(`[Supplier Order Call]: Placing order to ${item.supplier} for 30 units of ${item.name}...`)}
+                      onClick={() => alert(`[Supplier Order Call]: Placing order to ${item.supplier || 'Wholesaler'} for 30 units of ${item.name}...`)}
                       className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm transition-all"
                     >
                       <PhoneCall className="w-3 h-3" />
@@ -374,6 +391,16 @@ export function InventoryTab({ catalogItems, onAddItem, onEditItem, onDeleteItem
                   type="text"
                   value={editSupplier}
                   onChange={(e) => setEditSupplier(e.target.value)}
+                  className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-mono">Expiry Date</label>
+                <input
+                  type="date"
+                  value={editExpiryDate}
+                  onChange={(e) => setEditExpiryDate(e.target.value)}
                   className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
