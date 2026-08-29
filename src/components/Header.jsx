@@ -19,6 +19,9 @@ export function Header({ activeTab, setActiveTab, mode, setMode, onOpenSettings,
                   PWA • USD
                 </span>
               </h1>
+              <p className="text-[10px] text-zinc-400 font-medium">
+                Scalar keeps your business numbers straight.
+              </p>
             </div>
           </div>
 

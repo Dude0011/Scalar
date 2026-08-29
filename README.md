@@ -1,5 +1,6 @@
 # Scalar — Stateful Voice-First Transaction Engine
 
+> **"Scalar keeps your business numbers straight."**  
 > **micro1 Agentic Workflows Hackathon Submission**  
 > A mobile-first Progressive Web App (PWA) that converts unstructured spoken commerce dictations into structured transaction ledgers using **Fireworks AI (Llama 3.3 70B)** reasoning, RAG catalog item memory, price drift guardrails, and real-time inventory depletion tracking.
 
