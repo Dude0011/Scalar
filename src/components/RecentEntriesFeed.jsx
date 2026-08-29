@@ -51,10 +51,11 @@ export function RecentEntriesFeed({ ledger, onDeleteEntry, onUpdateEntry }) {
     }
 
     if (confidence >= 60) {
+      const isPriceDrift = item.status === 'PRICE_DRIFT_FLAGGED';
       return (
         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
           <AlertTriangle className="w-3 h-3" />
-          {confidence}% • Price Drift
+          {confidence}% • {isPriceDrift ? 'Price Drift' : 'Medium'}
         </span>
       );
     }

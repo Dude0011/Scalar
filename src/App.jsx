@@ -124,21 +124,23 @@ export default function App() {
   };
 
   const commitAgentEntry = (decisionDetails, commitNote = 'AUTO') => {
+    // Safety: ensure finalItemName is always a string
+    const itemName = decisionDetails.finalItemName || 'Unknown Item';
     const isNew = decisionDetails.status === 'NEW_ITEM_FLAGGED' && decisionDetails.unitPrice > 0;
 
     if (isNew) {
-      catalogStore.createNewItem(decisionDetails.finalItemName, decisionDetails.unitPrice, 'USD');
+      catalogStore.createNewItem(itemName, decisionDetails.unitPrice, 'USD');
     } else if (decisionDetails.catalogItem) {
       catalogStore.updateItemCatalog(
         decisionDetails.catalogItem.id,
         decisionDetails.unitPrice,
-        decisionDetails.finalItemName,
+        itemName,
         commitNote
       );
     }
 
     catalogStore.addLedgerEntry({
-      name: decisionDetails.finalItemName,
+      name: itemName,
       quantity: decisionDetails.quantity,
       unitPrice: decisionDetails.unitPrice,
       totalPrice: decisionDetails.quantity * decisionDetails.unitPrice,

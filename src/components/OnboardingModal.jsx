@@ -51,9 +51,6 @@ export function OnboardingModal({ isOpen, onClose, onPopulateMock, onAddCustomIt
             </div>
 
             <div className="space-y-2">
-              <span className="text-[11px] font-mono font-semibold uppercase tracking-widest px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-block">
-                Voice-First Stateful Commerce Engine
-              </span>
               <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
                 Welcome to Scalar
               </h2>
